@@ -305,8 +305,12 @@ func (s *Service) AppendPourEvents(ctx context.Context, brewID int64, incoming [
 		return nil, 0, err
 	}
 
+	// 读取旧曲线失败时绝不能继续追加：MergePourEvents 拿不到 existing，
+	// 会把 incoming 当成全部历史落库，ReplacePourEvents 随即覆盖掉
+	// 之前已存的节点。断线重连补传一条新点，反而让旧的两条凭空消失。
+	// 此处返回错误让客户端安全重试，保住已存数据才是续传链路的契约。
 	existing, readErr := s.repo.PourEvents(ctx, brewID)
-	if err != nil {
+	if readErr != nil {
 		return nil, 0, readErr
 	}
 
