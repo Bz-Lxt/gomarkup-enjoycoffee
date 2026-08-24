@@ -1,0 +1,21 @@
+# QA 覆盖率度量叠加层 —— 仅在度量真实端到端覆盖率时使用，不参与交付。
+#
+# 用法：
+#   mkdir -p tests/covdata && rm -rf tests/covdata/*
+#   docker compose -f docker-compose.yml -f docker-compose.cover.yml up --build -d
+#   docker compose run --rm qa npx playwright test
+#   docker compose -f docker-compose.yml -f docker-compose.cover.yml stop backend
+#   cd backend && go tool covdata percent -i=../tests/covdata
+#
+# 必须用 stop 而不是 kill：计数文件在进程收到 SIGTERM 后优雅退出时才落盘。
+#
+# 为何需要它：见 backend/Dockerfile.cover 顶部的说明 ——
+# internal/api 与 internal/store 只被容器外的接口套件驱动，
+# `go test -cover` 结构上看不见它们。
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.cover
+    volumes:
+      - ./tests/covdata:/covdata

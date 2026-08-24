@@ -1,0 +1,126 @@
+name: enjoycoffee
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: enjoycoffee-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coffee
+      POSTGRES_PASSWORD: coffee_dev_pw
+      POSTGRES_DB: enjoycoffee
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+      # 中文排序与显示，避免 initdb 落到 POSIX collation
+      LANG: C.UTF-8
+    ports:
+      - "31412:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coffee -d enjoycoffee"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      - coffeenet
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: enjoycoffee-backend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      APP_ENV: development
+      LOG_LEVEL: debug
+      HTTP_ADDR: ":8080"
+      DATABASE_URL: "postgres://coffee:coffee_dev_pw@db:5432/enjoycoffee?sslmode=disable"
+      # 前端走 nginx 同源代理，正常路径下不产生跨域请求。
+      # 这里保留白名单只为直连调试后端映射端口（31410）的场景，
+      # 例如用 curl 或 Swagger 之外的浏览器工具打接口。
+      CORS_ORIGINS: "http://localhost:31411,http://127.0.0.1:31411"
+      # 注水数据源：manual = 仅手动打点；simulator = 启用内置流速模拟器；device = 真实智能秤接入
+      POUR_SOURCE_MODE: "simulator"
+      SEED_DEMO_DATA: "true"
+    ports:
+      - "31410:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/v1/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks:
+      - coffeenet
+
+  frontend-user:
+    build:
+      context: ./frontend-user
+      dockerfile: Dockerfile
+    container_name: enjoycoffee-frontend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "31411:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    networks:
+      - coffeenet
+
+  # QA 容器不进入默认 up，避免测试退出连带停掉主栈
+  # 用法: docker compose run --rm qa
+  qa:
+    profiles: ["qa"]
+    build:
+      context: ./tests
+      dockerfile: Dockerfile
+    container_name: enjoycoffee-qa
+    environment:
+      TZ: Asia/Shanghai
+      # 容器内走 compose 网络服务名，不拨宿主机映射端口
+      API_BASE: "http://backend:8080"
+      WEB_BASE: "http://frontend-user:80"
+    volumes:
+      # 失败截图/录像/trace 必须落到宿主机。留在容器里等于没留 ——
+      # 这个容器是 --rm 的，测试一结束证据就跟着消失了。
+      - ./tests/results:/qa/results
+      # 用例源码挂进来而不是只靠镜像里 COPY 的副本。
+      #
+      # 不挂的代价不只是"每改一次用例要重构镜像"这点麻烦，而是一个
+      # 会骗人的陷阱：忘了重构时跑的是镜像里的旧用例，日志却显示绿。
+      # 把断言改严之后看到通过，实际上严格的那版根本没执行 ——
+      # 测试基础设施给出假绿比测试本身失败危险得多。
+      #
+      # 逐个目录挂而不是整个 /qa：整目录挂载会盖掉镜像里已经装好的
+      # node_modules 和浏览器，容器会连 playwright 都找不到。
+      - ./tests/api-smoke:/qa/api-smoke:ro
+      - ./tests/e2e:/qa/e2e:ro
+      - ./tests/playwright.config.ts:/qa/playwright.config.ts:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend-user:
+        condition: service_healthy
+    networks:
+      - coffeenet
+
+volumes:
+  pgdata:
+
+networks:
+  coffeenet:
+    driver: bridge
