@@ -190,6 +190,10 @@ func NewService(repo Repository) *Service { return &Service{repo: repo} }
 //
 // 语义是 upsert 而非 insert：一次冲煮只有一份评分。用户重新品尝后改分
 // 是正常操作，不该产生两条冲突的记录，也不该迫使前端先判断该调 POST 还是 PUT。
+//
+// ctx 必须是请求的 context：客户端断开或接口超时会取消它，从而中断
+// 正在等锁的 Upsert 查询。若调用方剥掉取消信号（context.WithoutCancel），
+// 已被网关记成 499 的评分仍会在锁释放后落库，覆盖掉用户随后提交的新分数。
 func (s *Service) Save(ctx context.Context, sc *Score) (*domain.RadarSummary, error) {
 	if sc.ScoredAt.IsZero() {
 		sc.ScoredAt = domain.Now()

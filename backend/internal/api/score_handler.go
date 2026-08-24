@@ -65,7 +65,7 @@ func (h *Handlers) saveScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	radar, err := h.Scores.Save(detachContext(r), sc)
+	radar, err := h.Scores.Save(r.Context(), sc)
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
