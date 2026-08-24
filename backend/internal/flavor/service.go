@@ -252,6 +252,14 @@ func (s *Service) DeleteNode(ctx context.Context, id int64, mode DeleteMode) (*D
 }
 
 // SetBeanFlavors 覆盖式设置某支豆的风味标签。
+//
+// 写入顺序必须是「先落库再重建缓存」，且不可颠倒：缓存重建从仓储读取
+// 当前全部「豆子↔风味」关联来构建位图。若先重建后写入，重建读到的是旧关联，
+// 新关联落库后内存快照仍然停留在旧状态——保存接口的返回值与紧接着的详情
+// 读取都会回显旧标签，直到兜底刷新循环或服务重启才纠正。
+//
+// 这条顺序与同包内所有写操作（CreateNode/UpdateNode/MoveNode/DeleteNode）
+// 保持一致：先把变更落进持久层，再让物化视图跟上真相。
 func (s *Service) SetBeanFlavors(ctx context.Context, beanID int64, nodeIDs []int64) error {
 	snap := s.cache.Snapshot()
 
@@ -276,10 +284,10 @@ func (s *Service) SetBeanFlavors(ctx context.Context, beanID int64, nodeIDs []in
 		return e
 	}
 
-	if err := s.cache.Rebuild(ctx); err != nil {
+	if err := s.repo.SetBeanFlavors(ctx, beanID, clean); err != nil {
 		return err
 	}
-	return s.repo.SetBeanFlavors(ctx, beanID, clean)
+	return s.cache.Rebuild(ctx)
 }
 
 // Refresh 强制重建快照。豆子被创建或删除后必须调用 —— 否则位图的

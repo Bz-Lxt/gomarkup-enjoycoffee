@@ -268,7 +268,7 @@ func (s *Service) Create(ctx context.Context, b *Bean) (*View, error) {
 	b.ID = id
 
 	if s.flavors != nil {
-		// 先落风味标签再重建索引。SetBeanFlavors 内部会触发重建，
+		// 落风味标签。SetBeanFlavors 内部「先写库再重建缓存」，
 		// 因此新豆的序号映射会在同一次重建中被建立 —— 不需要额外 Refresh。
 		if err := s.flavors.SetBeanFlavors(ctx, id, b.FlavorNodeIDs); err != nil {
 			return nil, err
