@@ -146,13 +146,20 @@ func (h *Hub) StopSimulator(brewID int64) {
 // StopAll 停止全部模拟器，供服务优雅关闭时调用。
 func (h *Hub) StopAll() {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	sims := make([]*simulator, 0, len(h.simulators))
 	for id, s := range h.simulators {
 		sims = append(sims, s)
 		delete(h.simulators, id)
 	}
+	h.mu.Unlock()
 
+	// 必须在锁外逐个停止：simulator.stop 会取消 context 并等待
+	// runSimulation 的 done 信道关闭。而 runSimulation 的 deferred
+	// 清理要重新拿 h.mu 把自己从注册表里摘掉（见 runSimulation 的
+	// defer）。若在这里持着 h.mu 去 stop，runSimulation 的 defer 就
+	// 拿不到锁，进而 close(done) 永远跑不到，stop 永远等不到 ——
+	// 优雅关闭就卡死在 StopAll，直到平台宽限期耗尽被 SIGKILL。
+	// StopSimulator 单独停止一个时没这个问题，因为它先解锁再 stop。
 	for _, s := range sims {
 		s.stop()
 	}
