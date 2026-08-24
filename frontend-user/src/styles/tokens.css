@@ -1,0 +1,117 @@
+/* 设计令牌 —— docs/DesignSpec.md 的可执行副本。
+   改设计先改规范文件，再改这里。 */
+
+:root {
+  /* ---- 中性色（咖啡褐调）---- */
+  --c-bg: #14100d;
+  --c-surface: #1e1815;
+  --c-surface-2: #282019;
+  --c-surface-3: #332a22;
+  --c-border: #3d3229;
+  --c-border-strong: #544639;
+  --c-text: #f5efe8;
+  --c-text-2: #b8a896;
+  --c-text-3: #7d6e5f;
+
+  /* ---- 品牌色 ---- */
+  --c-brand: #c98a3e;
+  --c-brand-hover: #db9c4c;
+  --c-brand-dim: rgba(201, 138, 62, 0.14);
+  --c-brand-line: rgba(201, 138, 62, 0.55);
+
+  /* ---- 语义色（全站唯一一套）---- */
+  --c-good: #4fa96b;
+  --c-good-dim: rgba(79, 169, 107, 0.14);
+  --c-good-line: rgba(79, 169, 107, 0.55);
+
+  --c-warn: #d99a2b;
+  --c-warn-dim: rgba(217, 154, 43, 0.14);
+  --c-warn-line: rgba(217, 154, 43, 0.55);
+
+  --c-bad: #c4543c;
+  --c-bad-dim: rgba(196, 84, 60, 0.14);
+  --c-bad-line: rgba(196, 84, 60, 0.55);
+
+  --c-info: #4a8fb5;
+  --c-info-dim: rgba(74, 143, 181, 0.14);
+  --c-info-line: rgba(74, 143, 181, 0.55);
+
+  /* ---- 雷达墙六色（半透明叠加后仍可分辨）---- */
+  --c-layer-1: #c98a3e;
+  --c-layer-2: #4a8fb5;
+  --c-layer-3: #4fa96b;
+  --c-layer-4: #b5628f;
+  --c-layer-5: #c4543c;
+  --c-layer-6: #8b8fc9;
+
+  /* ---- 字体 ---- */
+  --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system,
+    sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', ui-monospace, monospace;
+
+  --fs-display: 40px;
+  --fs-h1: 26px;
+  --fs-h2: 19px;
+  --fs-h3: 15px;
+  --fs-body: 14px;
+  --fs-sm: 13px;
+  --fs-xs: 12px;
+
+  /* ---- 4px 基准间距 ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* ---- 圆角 ---- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  /* ---- 阴影（深色主题下层次主要靠 surface 明度差）---- */
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);
+  --sh-2: 0 4px 12px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.36);
+
+  /* ---- 动效 ---- */
+  --t-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- 布局 ---- */
+  --nav-w: 216px;
+  --nav-w-collapsed: 64px;
+  --content-max: 1440px;
+}
+
+/* 把令牌暴露给 Tailwind v4 的工具类（bg-surface、text-brand 等） */
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-surface-3: var(--c-surface-3);
+  --color-line: var(--c-border);
+  --color-line-strong: var(--c-border-strong);
+  --color-ink: var(--c-text);
+  --color-ink-2: var(--c-text-2);
+  --color-ink-3: var(--c-text-3);
+  --color-brand: var(--c-brand);
+  --color-brand-hover: var(--c-brand-hover);
+  --color-good: var(--c-good);
+  --color-warn: var(--c-warn);
+  --color-bad: var(--c-bad);
+  --color-info: var(--c-info);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+}

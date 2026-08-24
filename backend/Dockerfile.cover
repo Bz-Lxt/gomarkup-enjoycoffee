@@ -1,0 +1,47 @@
+# 覆盖率插桩镜像 —— 仅用于 QA 度量，不参与交付
+#
+# 存在理由：`go test -cover` 只能看见进程内跑的测试。而 internal/api 与
+# internal/store 这两层（合计约 1370 条语句）是被容器外的 Playwright
+# 接口套件驱动的 —— 它们打的是真实 HTTP、真实 SQL，覆盖质量比进程内
+# 塞 mock 更高，但在 go test 的报表上一律显示 0.0%。
+#
+# Go 1.20 起支持给二进制而非测试插桩（`go build -cover`），运行时把计数
+# 写进 GOCOVERDIR。于是可以让 Playwright 打这个插桩后的后端，再用
+# `go tool covdata` 把真实覆盖率读出来，把"我们认为覆盖到了"变成一个数字。
+#
+# 与生产镜像的差异刻意只有两处：去掉 -ldflags 剥离（插桩需要符号），
+# 以及以 root 运行（要往挂载卷里写计数文件）。其余保持一致，
+# 以免测到的是一个和交付物不同的东西。
+
+FROM golang:1.25-alpine AS builder
+
+ENV GOPROXY=https://goproxy.cn,direct \
+    GOSUMDB=sum.golang.google.cn \
+    CGO_ENABLED=0
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
+# -coverpkg=./... 让计数覆盖全部内部包，而不只是 main 所在的包。
+RUN go build -cover -covermode=set -coverpkg=./... -o /out/server ./cmd/server
+
+FROM alpine:3.20
+
+RUN apk add --no-cache tzdata ca-certificates wget && \
+    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone
+
+ENV TZ=Asia/Shanghai \
+    GOCOVERDIR=/covdata
+
+COPY --from=builder /out/server /app/server
+
+WORKDIR /app
+EXPOSE 8080
+
+HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=12 \
+    CMD wget -qO- http://127.0.0.1:8080/api/v1/health >/dev/null || exit 1
+
+ENTRYPOINT ["/app/server"]
