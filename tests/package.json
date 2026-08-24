@@ -1,0 +1,13 @@
+{
+  "name": "enjoycoffee-qa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test api-smoke",
+    "test:e2e": "playwright test e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}
